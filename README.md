@@ -3,13 +3,11 @@ The software is an RPC server written in go (golang), which either:
 * accepts a timestamp, adjusts and returns it or
 * fetches a timestamp from its own system clock, adjusts and returns it
 
-The adjustment accounts for the difference between UTC as experienced on Earth versus UTC experienced in the local time-frame (e.g. on Earth's moon), where time passes at a different rate than it foes on Earth. The purpose is to return the timestamp synchronised with UTC on Earth.
+The adjustment accounts for the difference between UTC as experienced on Earth versus UTC experienced in the local time-frame (e.g. on Earth's moon), where time passes at a different rate than it does on Earth. The purpose is to return the timestamp synchronised with UTC on Earth by removing relativistic effects.
 
 There's nothing particularly clever going on, the clock simply calculates how far adrift the local clock has is from Earth-UTC and adjusts. There are three points in time:
 
-1 - the start of the epoch
-2 - the moment when the local clock was ast synched with Earth-UTC (private epoch)
-3 - the current (local) time expressed as UTC in nanoseconds
+(1) the start of the epoch (2) the moment when the local clock was ast synched with Earth-UTC (private epoch) (3) - the current (local) time expressed as UTC in nanoseconds
 
 The server can either accept a timestamp from a remote device, or it can fetch one from its own clock. It then calculates the number of nanoseconds since the start of the unix epoch. The clock though, was accurate up to the moment it was last synchronised with Earth (known as the private epoch), so time after that point is separated, with time prior to that event stored (let's call it PRIOR). The drift per day due to relativistic effects are known, and used to divide the remaining time into granules. The number of granules are then multiplied by the divisor, which are then subtracted from the 'remaining' time, the PRIOR time is added back, and the total returned to the caller.
 
