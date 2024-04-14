@@ -9,6 +9,7 @@ There are additional functions to:
 	* reset the private epoch - the time the system clock (or NTP server) was last retrained to UTC
 
 Resetting the private epoch allows the clock to continue running instead of requiring a restart.
+Settings are saved in $HOME/.rtaps/rtaps.ini
 */
 package main
 
