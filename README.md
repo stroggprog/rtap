@@ -22,21 +22,21 @@ Major system parameters such as the private epoch are store in a file and reload
 If you don't have 'go' installed, please go to https://go.dev/ and follow the instructions.
 
 After pulling the repository:
-'''
+```
 go build .
 ./rtaps
-'''
+```
 
 If everything runs well:
-'''
+```
 go install
-'''
+```
 
 For the test client (in a separate terminal window):
-'''
+```
 cd rtapcli
 go run .
-'''
+```
 
 The test client shoul output some data and then terminate.
 
