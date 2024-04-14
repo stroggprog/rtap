@@ -16,3 +16,30 @@ In this way, only time beyond the private epoch is adjusted.
 If the system clock (or local NTP server) is retrained to Earth-UTC, there is a function to adjust the private epoch.
 
 Major system parameters such as the private epoch are store in a file and reloaded after a restart.
+
+## Installation:
+
+If you don't have 'go' installed, please go to https://go.dev/ and follow the instructions.
+
+After pulling the repository:
+'''
+go build .
+./rtaps
+'''
+
+If everything runs well:
+'''
+go install
+'''
+
+For the test client (in a separate terminal window):
+'''
+cd rtapcli
+go run .
+'''
+
+The test client shoul output some data and then terminate.
+
+To exit the server on Windows, type Ctrl-C. You can do so on Linux too, but the server also outputs the kill command if you prefer to do it that way. I have no idea how to terminate it on a Mac, but if you're running one I'm sure you do.
+
+
