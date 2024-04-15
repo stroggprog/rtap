@@ -1,12 +1,13 @@
 /*
 Rtaps creates an RPC server which provides functions for either:
-	* providing adjusted timestamps collected from the server's own clock
-	* adjusting timestamps sent to the server.
+  - providing adjusted timestamps collected from the server's own clock
+  - adjusting timestamps sent to the server.
+
 The adjustment corrects relativistic effects, retraining timestamps to be synchronous with UTC as experienced on Earth.
 
 There are additional functions to:
-	* provide an estimated real-time clock that attempts to negate request turn-around time (not recommended)
-	* reset the private epoch - the time the system clock (or NTP server) was last retrained to UTC
+  - provide an estimated real-time clock that attempts to negate request turn-around time (not recommended)
+  - reset the private epoch - the time the system clock (or NTP server) was last retrained to UTC
 
 Resetting the private epoch allows the clock to continue running instead of requiring a restart.
 Settings are saved in $HOME/.rtaps/rtaps.ini
@@ -21,13 +22,12 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"os/user"
-	"time"
 	"os/signal"
-	"syscall"
+	"os/user"
 	"strconv"
+	"syscall"
+	"time"
 )
-
 
 var norm int64 = (86400 * 1e9) // one day in nanoseconds
 var adjust int64 = 7 * 1e3     // 1/8th of 56 microseconds, the dilation, normalised to an integer in nanoseconds
@@ -46,7 +46,7 @@ type TimeServer int64
 
 func main() {
 	mult = adjust
-	fmt.Printf("Kill cmd: kill -s SIGINT %d\n",os.Getpid())
+	fmt.Printf("Kill cmd: kill -s SIGINT %d\n", os.Getpid())
 	configure()
 	clock()
 }
@@ -120,19 +120,18 @@ func clock() {
 	http.Serve(l, nil)
 	fmt.Println("Bye")
 
-
 	interruptSignal := make(chan os.Signal, 1)
-    signal.Notify(interruptSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-    <-interruptSignal
-    l.Close()
-    fmt.Println("Bye.")
+	signal.Notify(interruptSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	<-interruptSignal
+	l.Close()
+	fmt.Println("Bye.")
 }
 
-func fetchTime( inTime int64 ) int64 {
+func fetchTime(inTime int64) int64 {
 	t := (inTime + epochDiff) - private_epoch // get the current time less the period prior to prvt epoch
-	e := t / (norm)                                          // divide by granularity to get number of granules
-	t -= e * adjust                                          // subtract granules multiplied by adjustment per granule
-	return t + private_epoch + codeTime                      // add the time prior to prvt epoch back and return to caller
+	e := t / (norm)                           // divide by granularity to get number of granules
+	t -= e * adjust                           // subtract granules multiplied by adjustment per granule
+	return t + private_epoch + codeTime       // add the time prior to prvt epoch back and return to caller
 }
 
 // ============================
@@ -144,7 +143,7 @@ func (t *TimeServer) ServerTime(args *Args, reply *int64) error {
 }
 
 func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
-	inTime, _ := strconv.ParseInt(args.Moment,10,64)
+	inTime, _ := strconv.ParseInt(args.Moment, 10, 64)
 	*reply = fetchTime(inTime)
 	return nil
 }
