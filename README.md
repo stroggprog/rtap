@@ -46,4 +46,31 @@ The test client should output some data and then terminate.
 
 To exit the server on Windows, type Ctrl-C. You can do so on Linux too, but the server also outputs the kill command if you prefer to do it that way. I have no idea how to terminate it on a Mac, but if you're running one I'm sure you do.
 
+## Functions
 
+__All functions will return an error *to the RPC server code* in the event of an error.__
+
+Clients can call two functions to get adjusted time:
+```
+ServerTime( arg *Args, reply *int64 ) // fetches adjusted server time
+AdjustTime( arg *Args, reply *int64 ) // adjusts provided time
+```
+The `Args` structure is:
+```
+type Args struct {
+	Moment string
+}
+```
+Where `Moment` is a stringified int64 number. When calling `ServerTime`, `Moment` should be set to "0". When calling `AdjustTime`, it should be set to the timestamp (in nanoseconds) to be adjusted.
+
+If the local timekeeper (NTP server) is retrained to Earth-UTC, the moment - expressed in nanoseconds - should be pushed to `rtaps` using the function:
+```
+SetPrvEpoch( arg *Args, reply *int64 )
+```
+This sets the private epoch to the value passed. This new private epoch becomes active immediately, and the configuration file is updated in case there is a restart.
+
+There is an additional function that can be called:
+```
+SetCodeTime( arg *Args, reply *int64 )
+```
+This function is not recommended, but is included for experimentation. Its purpose is to take into consideration the turn-around time for calling the RPC functions and receiving a result by the caller. The intention is so that when an adjusted timestamp is recieved, it is not stale. There are too many variables involved (such as network latency, CPU utilisation on both machones etc.) to make this in any way accurate except by chance, and even then only on a request by request basis. Hoever, if an additional *predicatable* moderator is required, the `codeTime` variable can be leveraged to do something useful.
