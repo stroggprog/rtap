@@ -5,7 +5,7 @@ The software is an RPC server written in go (golang), which either:
 
 The adjustment accounts for the difference between UTC as experienced on Earth versus UTC experienced in the local time-frame (e.g. on Earth's moon), where time passes at a different rate than it does on Earth. The purpose is to return the timestamp synchronised with UTC on Earth by removing relativistic effects.
 
-There's nothing particularly clever going on, the clock simply calculates how far adrift the local clock has is from Earth-UTC and adjusts. There are three points in time:
+There's nothing particularly clever going on, the clock simply calculates how far adrift the local clock is from Earth-UTC and adjusts. There are three points in time:
 
 1. the start of the epoch 
 2. the moment when the local clock was last synched with Earth-UTC (private epoch) 
@@ -25,6 +25,7 @@ If you don't have 'go' installed, please go to https://go.dev/ and follow the in
 
 After pulling the repository:
 ```
+go mod tidy
 go build .
 ./rtaps
 ```
@@ -37,10 +38,11 @@ go install
 For the test client (in a separate terminal window):
 ```
 cd rtapcli
+go mod tidy
 go run .
 ```
 
-The test client shoul output some data and then terminate.
+The test client should output some data and then terminate.
 
 To exit the server on Windows, type Ctrl-C. You can do so on Linux too, but the server also outputs the kill command if you prefer to do it that way. I have no idea how to terminate it on a Mac, but if you're running one I'm sure you do.
 
