@@ -11,6 +11,13 @@ There are additional functions to:
 
 Resetting the private epoch allows the clock to continue running instead of requiring a restart.
 Settings are saved in $HOME/.rtaps/rtaps.ini
+
+This code is released under the GNU GPL v3.0 licence. Any third-prty modules or software this code
+relies on in order to run, may have their own licencing requirements and stipulations. A copy of the licence
+should always accompany this code.
+
+Code originally written by Philip Ide, and is based on code by atanda nafiu, from the code
+example at https://dev.to/atanda0x/a-beginners-guide-to-rpc-in-golang-understanding-the-basics-4eeb
 */
 package main
 
@@ -94,9 +101,13 @@ func readIniFile() {
 }
 
 func openIniFile() *ini.File {
-	usr, _ := user.Current() // who are we?
+	usr, err := user.Current() // who are we?
+	chkErr(err, "failed checking user", true)
+
 	homedir = usr.HomeDir + "/.rtaps"
-	os.MkdirAll(homedir, 0770) // make sure config data folder exists
+	err = os.MkdirAll(homedir, 0770) // make sure config data folder exists
+	chkErr(err, "failed to create folder ~/.rtaps", true)
+
 	iniFileName = homedir + "/rtaps.ini"
 	cfg, err = ini.LooseLoad(iniFileName)
 	chkErr(err, "Couldn't load ini file: %v", false)
@@ -113,18 +124,17 @@ func clock() {
 	rpc.HandleHTTP()
 	sport := fmt.Sprintf(":%d", serverPort)
 	l, err := net.Listen("tcp", sport)
-	if err != nil {
-		log.Fatal("listen error:", err)
-	}
+	chkErr(err, "listen error", true)
+
 	fmt.Println("Ready")
-	http.Serve(l, nil)
-	fmt.Println("Bye")
+	go http.Serve(l, nil)
 
 	interruptSignal := make(chan os.Signal, 1)
 	signal.Notify(interruptSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-interruptSignal
+
 	l.Close()
-	fmt.Println("Bye.")
+	fmt.Println("\nBye.")
 }
 
 func fetchTime(inTime int64) int64 {
@@ -142,8 +152,13 @@ func (t *TimeServer) ServerTime(args *Args, reply *int64) error {
 	return nil
 }
 
+// if AdjustTime doesn't receive a parameter, it behaves exactly
+// like ServerTime()
 func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
-	inTime, _ := strconv.ParseInt(args.Moment, 10, 64)
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
 	*reply = fetchTime(inTime)
 	return nil
 }
