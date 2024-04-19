@@ -91,8 +91,8 @@ func readIniFile() {
 	private_epoch = cfg.Section("Epochs").Key("private").MustInt64(time.Now().UnixNano() + epochDiff)
 	epochDiff = cfg.Section("Epochs").Key("epochDiff").MustInt64(0)
 
-	divisor = cfg.Section("Ajustments").Key("DailyFractions").MustInt64(56)
-	adjust = cfg.Section("Ajustments").Key("NanosecPerFraction").MustInt64(1000)
+	divisor = cfg.Section("Ajustments").Key("DailyFractions").MustInt64(587)
+	adjust = cfg.Section("Ajustments").Key("NanosecPerFraction").MustInt64(10)
 	codeTime = cfg.Section("Ajustments").Key("CodeTime").MustInt64(0)
 
 	if !fileExists(iniFileName) {
