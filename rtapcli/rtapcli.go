@@ -35,14 +35,23 @@ func main() {
 	// now fetch the current time adjusted for lunar time dilation
 	// results are returned in global variable 'reply'
 	args.Moment = "0" // dummy value, not used in his call
-	fetchTime(client, args)
-	fmt.Sprintf("%d = timeserver\n", reply)
+	fetchServerTime(client, args) // fetch adjusted server time
+	fmt.Sprintf("%d = adjusted server time\n", reply)
+
+	args.Moment = now
+	fetchAdjustTime(client, args)
+	fmt.Sprintf("%d = adjusted local time\n", reply)
+
+	fetchCalcRelativeTime(client, args)
+	fmt.Sprintf("%d = adjustment for local time\n", reply)
+
+	fetchAddRelativeTime(client, args)
+	fmt.Sprintf("%d = adjusted Earth time to relativistic time\n", reply)
 
 	// now set the private epoch for the dilation server
 	// results are returned in global variable 'reply'
 	// private epoch is the moment from which dilation should be adjusted
 	// e.g. the moment when the clock is synchronised with UTC, which might happen at regular intervals
-	args.Moment = now
 	setPrivateEpoch(client, args)
 	fmt.Printf("Clock private epoch reset to %d\n", reply)
 }
@@ -55,10 +64,34 @@ func chkErr(err error, s string, fatal bool) {
 	}
 }
 
-// Invoke the remote function GiveServerTime attached to TimeServer pointer
+// Invoke the remote function ServerTime attached to TimeServer pointer
 // Sending the arguments and reply variable address to the server as well
-func fetchTime(client *rpc.Client, args ppirpcstructs.Args) {
+func fetchServerTime(client *rpc.Client, args ppirpcstructs.Args) {
 	err := client.Call("TimeServer.ServerTime", args, &reply)
+	chkErr(err, "fetching time: %s", false)
+	return
+}
+
+// Invoke the remote function ServerTime attached to TimeServer pointer
+// Sending the arguments and reply variable address to the server as well
+func fetchAdjustTime(client *rpc.Client, args ppirpcstructs.Args) {
+	err := client.Call("TimeServer.AdjustTime", args, &reply)
+	chkErr(err, "fetching time: %s", false)
+	return
+}
+
+// Invoke the remote function ServerTime attached to TimeServer pointer
+// Sending the arguments and reply variable address to the server as well
+func fetchAddRelativeTime(client *rpc.Client, args ppirpcstructs.Args) {
+	err := client.Call("TimeServer.AddRelativeTime", args, &reply)
+	chkErr(err, "fetching time: %s", false)
+	return
+}
+
+// Invoke the remote function ServerTime attached to TimeServer pointer
+// Sending the arguments and reply variable address to the server as well
+func fetchCalcRelativeTime(client *rpc.Client, args ppirpcstructs.Args) {
+	err := client.Call("TimeServer.CalcRelativeTime", args, &reply)
 	chkErr(err, "fetching time: %s", false)
 	return
 }

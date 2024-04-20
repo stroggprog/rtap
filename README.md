@@ -50,10 +50,12 @@ To exit the server on Windows, type Ctrl-C. You can do so on Linux too, but the 
 
 __All functions will return an error *to the RPC server code* in the event of an error.__
 
-Clients can call two functions to get adjusted time:
+Clients can call four functions to get adjusted time:
 ```
-ServerTime( arg *Args, reply *int64 ) // fetches adjusted server time
-AdjustTime( arg *Args, reply *int64 ) // adjusts provided time
+ServerTime( arg *Args, reply *int64 ) 		// fetches adjusted server time
+AdjustTime( arg *Args, reply *int64 )		// adjusts provided time
+CalcRelativeTime(arg *Args, reply *int64)	// calculate nanoseconds difference between Earth-UTC and un-adjusted time
+AddRelativeTime( arg *Args, reply *int64 )	// Earth based clock conversion to un-adjusted gravitational time
 ```
 The `Args` structure is:
 ```
@@ -63,16 +65,20 @@ type Args struct {
 ```
 Where `Moment` is a stringified int64 number. When calling `ServerTime`, `Moment` should be set to "0". When calling `AdjustTime`, it should be set to the timestamp (in nanoseconds) to be adjusted.
 
+`CalcRelativeTime` returns the difference between a timestamp affected by relativity and Earth-UTC.
+
 If the local timekeeper (NTP server) is retrained to Earth-UTC, the moment - expressed in nanoseconds - should be pushed to `rtaps` using the function:
 ```
 SetPrvEpoch( arg *Args, reply *int64 )
 ```
 This sets the private epoch to the value passed. This new private epoch becomes active immediately, and the configuration file is updated in case there is a restart.
 
+`AddRelativeTime` is a function that is the opposite of `ServerTime` & `AdjustTime`, in that it is meant to be used on Earth to return the un-adjusted time on the other gravitational body (e.g. Earth's moon). This takes a timestamp expressed in nanoseconds, where 0 (zero) is the beginning of the unix epoch. Any offset from the epoch will be added, the amount of time that would have advanced is added (e.g. 1 nanosecond per 1/58.7th of 24hrs) and then returned to the caller.
+
 There is an additional function that can be called:
 ```
 SetCodeTime( arg *Args, reply *int64 )
 ```
-This function is not recommended, but is included for experimentation. Its purpose is to take into consideration the turn-around time for calling the RPC functions and receiving a result by the caller. The intention is that when an adjusted timestamp is recieved, it is not stale (e.g. synched with Earth-UTC). There are too many variables involved (such as network latency, CPU utilisation on both machones etc.) to make this in any way accurate except by chance, and even then only on a request by request basis. However, if an additional *predictable* moderator is required, the `codeTime` variable can be leveraged to do something useful.
+This function is not recommended, but is included for experimentation. Its purpose is to take into consideration the turn-around time for calling the RPC functions and receiving a result by the caller. The intention is that when an adjusted timestamp is recieved, it is not stale (e.g. synched with Earth-UTC). There are too many variables involved (such as network latency, CPU utilisation on both machines etc.) to make this in any way accurate except by chance, and even then only on a request by request basis. However, if an additional *predictable* moderator is required, the `codeTime` variable can be leveraged to do something useful.
 
-A better solution would be to snapshot the time at the moment the result is returned. The difference between this and the original time sent to the RPC server is the turnaround time. However, taking the new snapshot and comparing it to the original timestamp will distort the result.
+A better solution would be to snapshot the time at the moment the result is returned. The difference between this and the original time sent to the RPC server is the turnaround time. However, taking the new snapshot and comparing it to the original timestamp will distort the result, so further adjusting the returned timestamp up to account for the turnaround time will still leave the timestamp stale. Any additional value added to account for this staleness will be guesswork.

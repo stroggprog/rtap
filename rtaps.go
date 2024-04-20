@@ -140,7 +140,7 @@ func clock() {
 func fetchTime(inTime int64) int64 {
 	t := (inTime + epochDiff) - private_epoch // get the current time less the period prior to prvt epoch
 	e := t / (norm)                           // divide by granularity to get number of granules
-	t -= e * adjust                           // subtract granules multiplied by adjustment per granule
+	t -= (e * adjust)                         // subtract granules multiplied by adjustment per granule
 	return t + private_epoch + codeTime       // add the time prior to prvt epoch back and return to caller
 }
 
@@ -160,6 +160,22 @@ func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
 		inTime = time.Now().UnixNano()
 	}
 	*reply = fetchTime(inTime)
+	return nil
+}
+
+func (t *TimeServer) CalcRelativeTime(arg *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	t := (inTime + epochDiff)
+	e := t / norm
+	*reply = (e*adjust)
+	return nil
+}
+
+func (t *TimeServer) AddRelativeTime(arg *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	t := (inTime + epochDiff)
+	e := t / norm
+	*reply = t + (e*adjust)
 	return nil
 }
 
