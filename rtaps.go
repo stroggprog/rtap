@@ -12,9 +12,11 @@ There are additional functions to:
 Resetting the private epoch allows the clock to continue running instead of requiring a restart.
 Settings are saved in $HOME/.rtaps/rtaps.ini
 
-This code is released under the GNU GPL v3.0 licence. Any third-prty modules or software this code
+This code is released under the GNU GPL v3.0 licence. Any third-party modules or software this code
 relies on in order to run, may have their own licencing requirements and stipulations. A copy of the licence
 should always accompany this code.
+
+Alternate licencing may be available on request.
 
 Code originally written by Philip Ide, and is based on code by atanda nafiu, from the code
 example at https://dev.to/atanda0x/a-beginners-guide-to-rpc-in-golang-understanding-the-basics-4eeb
