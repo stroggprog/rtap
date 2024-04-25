@@ -53,9 +53,12 @@ __All functions will return an error *to the RPC server code* in the event of an
 Clients can call four functions to get adjusted time:
 ```
 ServerTime( arg *Args, reply *int64 ) 		// fetches adjusted server time
-AdjustTime( arg *Args, reply *int64 )		// adjusts provided time
-CalcRelativeTime(arg *Args, reply *int64)	// calculate nanoseconds difference between Earth-UTC and un-adjusted time
-AddRelativeTime( arg *Args, reply *int64 )	// Earth based clock conversion to un-adjusted gravitational time
+AdjustTime( arg *Args, reply *int64 )		// adjusts provided timestamp
+CalcRelativeTime(arg *Args, reply *int64)	// returns the difference between the provided timestamp and Earth-UTC
+AddRelativeTime( arg *Args, reply *int64 )	// Earth-UTC converted to un-adjusted gravitational time
+RelativeUnix(args *Args, reply *int64)		// returns the amount of adjustment between given timestamp and unix epoch
+AdjustUTCTZ(args *Args, reply *int64)		// returns timestamp adjusted since TZ epoch (UTC @ 1900-01-01 00:00:00)
+RelativeUTCTZ(args *Args, reply *int64)		// returns amount of adjustment on given timestamp since TZ epoch
 ```
 The `Args` structure is:
 ```
@@ -75,10 +78,8 @@ This sets the private epoch to the value passed. This new private epoch becomes 
 
 `AddRelativeTime` is a function that is the opposite of `ServerTime` & `AdjustTime`, in that it is meant to be used on Earth to return the un-adjusted time on the other gravitational body (e.g. Earth's moon). This takes a timestamp expressed in nanoseconds, where 0 (zero) is the beginning of the unix epoch. Any offset from the epoch will be added, the amount of time that would have advanced is added (e.g. 1 nanosecond per 1/58.7th of 24hrs) and then returned to the caller.
 
-There is an additional function that can be called:
-```
-SetCodeTime( arg *Args, reply *int64 )
-```
-This function is not recommended, but is included for experimentation. Its purpose is to take into consideration the turn-around time for calling the RPC functions and receiving a result by the caller. The intention is that when an adjusted timestamp is recieved, it is not stale (e.g. synched with Earth-UTC). There are too many variables involved (such as network latency, CPU utilisation on both machines etc.) to make this in any way accurate except by chance, and even then only on a request by request basis. However, if an additional *predictable* moderator is required, the `codeTime` variable can be leveraged to do something useful.
+`RelativeUnix` returns the amount of adjustment between the given timestamp and the Unix Epoch (1970-01-01 00:00:00). Note that if a different epoch is used for other calculations, this function's return value will differ by the difference between the used and the Unix epochs.
 
-A better solution would be to snapshot the time at the moment the result is returned. The difference between this and the original time sent to the RPC server is the turnaround time. However, taking the new snapshot and comparing it to the original timestamp will distort the result, so further adjusting the returned timestamp up to account for the turnaround time will still leave the timestamp stale. Any additional value added to account for this staleness will be guesswork.
+`AdjustUTCTZ` returns the timestamp adjusted using the internationally recognised Timezone epoch, which is 1900-01-01 00:00:00 UTC.
+
+`RelativeUTCTZ` returns the amount of adjustment that would have been applied to a timestamp using the Timezone epoch instead of the Unix or user-defined (via the epochDiff setting in the ini file) epoch.

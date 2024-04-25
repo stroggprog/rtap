@@ -48,6 +48,7 @@ var codeTime int64
 var err error
 var cfg *ini.File
 var iniFileName string
+var tznano int64
 
 type TimeServer int64
 
@@ -79,6 +80,10 @@ func configure() {
 	readIniFile()
 	norm = norm / divisor
 
+	tznano = -time.Date(1900, 01, 01, 0, 0, 0, 0, time.Local).UTC().UnixNano()
+	//utc := tznano.UTC().UnixNano()
+
+	fmt.Println("TZ Epoch:", tznano)
 	fmt.Println("Setting unix epoch offset: " + fmt.Sprintf("%d", epochDiff))
 	fmt.Println("Setting private epoch:", private_epoch)
 	fmt.Printf("Granularity %d nanosecs (%d times per day)\n", adjust, divisor)
@@ -141,19 +146,20 @@ func fetchTime(inTime int64) int64 {
 	t := (inTime + epochDiff) - private_epoch // get the current time less the period prior to prvt epoch
 	e := t / (norm)                           // divide by granularity to get number of granules
 	t -= (e * adjust)                         // subtract granules multiplied by adjustment per granule
-	return t + private_epoch + codeTime       // add the time prior to prvt epoch back and return to caller
+	return t + private_epoch                  // add the time prior to prvt epoch back and return to caller
 }
 
 // ============================
 // RPC exported funcs
 
+// returns the current adjusted time as reported by the local clock
 func (t *TimeServer) ServerTime(args *Args, reply *int64) error {
 	*reply = fetchTime(time.Now().UnixNano())
 	return nil
 }
 
 // if AdjustTime doesn't receive a parameter, it behaves exactly
-// like ServerTime()
+// like ServerTime(), otherwise adjusts given timestamp
 func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
 	if err != nil {
@@ -163,19 +169,63 @@ func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
 	return nil
 }
 
-func (t *TimeServer) CalcRelativeTime(arg *Args, reply *int64) error {
+// given a timestamp, it returns the difference between the adjusted timestamp and Earth-UTC
+func (t *TimeServer) CalcRelativeTime(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	t := (inTime + epochDiff)
-	e := t / norm
-	*reply = (e*adjust)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	t0 := (inTime + epochDiff)
+	e := t0 / norm
+	*reply = (e * adjust)
 	return nil
 }
 
-func (t *TimeServer) AddRelativeTime(arg *Args, reply *int64) error {
+// when used on Earth, adjusts a given timestamp to show local time on other body (e.g. moon)
+func (t *TimeServer) AddRelativeTime(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	t := (inTime + epochDiff)
-	e := t / norm
-	*reply = t + (e*adjust)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	t0 := (inTime + epochDiff)
+	e := t0 / norm
+	*reply = t0 + (e * adjust)
+	return nil
+}
+
+// returns the amount of adjustment between given timestamp and unix epoch
+// timestamp defaults to current time on server
+func (t *TimeServer) RelativeUnix(args *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	e := inTime / norm
+	*reply = e * adjust
+	return nil
+}
+
+// returns given timestamp adjusted since TZ epoch (UTC @ 1900-01-01 00:00:00)
+func (t *TimeServer) AdjustUTCTZ(args *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	inTime = tznano + inTime
+	e := inTime / norm
+	*reply = (inTime - tznano) + (e * adjust)
+	return nil
+}
+
+// returns amount of adjustment on given timestamp since TZ epoch (UTC @ 1900-01-01 00:00:00)
+func (t *TimeServer) RelativeUTCTZ(args *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	inTime = tznano + inTime
+	e := inTime / norm
+	*reply = (e * adjust)
 	return nil
 }
 
@@ -189,6 +239,7 @@ func (t *TimeServer) SetPrvEpoch(args *Args, reply *int64) error {
 	return nil
 }
 
+/*
 func (t *TimeServer) SetCodeTime(args *Args, reply *int64) error {
 	v := args.Moment
 	cfg.Section("Ajustments").Key("CodeTime").SetValue(v)
@@ -198,3 +249,4 @@ func (t *TimeServer) SetCodeTime(args *Args, reply *int64) error {
 	fmt.Printf("Private epoch updated: %d\n", codeTime)
 	return nil
 }
+*/
