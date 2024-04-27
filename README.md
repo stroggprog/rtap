@@ -59,6 +59,7 @@ AddRelativeTime( arg *Args, reply *int64 )	// Earth-UTC converted to un-adjusted
 RelativeUnix(args *Args, reply *int64)		// returns the amount of adjustment between given timestamp and unix epoch
 AdjustUTCTZ(args *Args, reply *int64)		// returns timestamp adjusted since TZ epoch (UTC @ 1900-01-01 00:00:00)
 RelativeUTCTZ(args *Args, reply *int64)		// returns amount of adjustment on given timestamp since TZ epoch
+FixDrift( args *Args, reply *int64)			// returns a value to fix clock drift
 ```
 The `Args` structure is:
 ```
@@ -83,3 +84,5 @@ This sets the private epoch to the value passed. This new private epoch becomes 
 `AdjustUTCTZ` returns the timestamp adjusted using the internationally recognised Timezone epoch, which is 1900-01-01 00:00:00 UTC.
 
 `RelativeUTCTZ` returns the amount of adjustment that would have been applied to a timestamp using the Timezone epoch instead of the Unix or user-defined (via the epochDiff setting in the ini file) epoch.
+
+`FixDrift` accepts a timestamp and returns the amount of drift the clock would have experienced during that period. All software/hardware clocks - other than atomic clocks - drift because they're just not that accurate (if they were, we wouldn't need atomic clocks). When requesting `ServerTime` or calling `AdjustTime` with value `0`, drift is automatically calculated and applied to the return value. For all other calls, including calling `AdjustTime` with a non-zero value, drift is __not__ calculated or applied. If a drift value is required, the value of the server's drift can be returned via this method so it can be retrospectively applied to a client timestamp.

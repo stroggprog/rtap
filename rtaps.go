@@ -1,4 +1,19 @@
 /*
+  Copyright 2024 Philip P. Ide
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+/*
 Rtaps creates an RPC server which provides functions for either:
   - providing adjusted timestamps collected from the server's own clock
   - adjusting timestamps sent to the server.
@@ -52,6 +67,9 @@ var cfg *ini.File
 var iniFileName string
 var tznano int64
 
+var driftFraction int64
+var driftAdjust int64
+
 type TimeServer int64
 
 func main() {
@@ -99,7 +117,17 @@ func readIniFile() {
 	epochDiff = cfg.Section("Epochs").Key("epochDiff").MustInt64(0)
 
 	divisor = cfg.Section("Ajustments").Key("DailyFractions").MustInt64(587)
-	adjust = cfg.Section("Ajustments").Key("NanosecPerFraction").MustInt64(10)
+	adjust = cfg.Section("Ajustments").Key("NanosecPerFraction").MustInt64(100)
+
+	// if drift isn't catered for, set
+	// driftFraction = 1
+	// driftAdjust = 0
+	//
+	// driftFraction is the granularity (1 = everything)
+	// driftAdjust is how much drift to account for per granule (0 = no drift)
+	//
+	driftFraction = cfg.Section("Adjustments").Key("driftFractions").MustInt64(1)
+	driftAdjust = cfg.Section("Adjustments").Key("driftFractions").MustInt64(0)
 	codeTime = cfg.Section("Ajustments").Key("CodeTime").MustInt64(0)
 
 	if !fileExists(iniFileName) {
@@ -144,37 +172,57 @@ func clock() {
 	fmt.Println("\nBye.")
 }
 
-func fetchTime(inTime int64) int64 {
+func fixDrift(inTime int64) int64 {
+	e := inTime / driftFraction
+	return t - (e * driftAdjust)
+}
+
+func fetchTime(inTime int64, fixdrift bool) int64 {
 	t := (inTime + epochDiff) - private_epoch // get the current time less the period prior to prvt epoch
-	e := t / (norm)                           // divide by granularity to get number of granules
-	t -= (e * adjust)                         // subtract granules multiplied by adjustment per granule
-	return t + private_epoch                  // add the time prior to prvt epoch back and return to caller
+	if fixdrift {
+		t = fixDrift(t)
+	}
+	e := t / (norm)          // divide by granularity to get number of granules
+	t -= (e * adjust)        // subtract granules multiplied by adjustment per granule
+	return t + private_epoch // add the time prior to prvt epoch back and return to caller
 }
 
 // ============================
 // RPC exported funcs
 
+func (t *TimeServer) FixDrift(args *Args, reply *int64) error {
+	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
+	if err != nil {
+		inTime = time.Now().UnixNano()
+	}
+	*reply = fixDrift(inTime)
+	return nil
+}
+
 // returns the current adjusted time as reported by the local clock
 func (t *TimeServer) ServerTime(args *Args, reply *int64) error {
-	*reply = fetchTime(time.Now().UnixNano())
+	*reply = fetchTime(time.Now().UnixNano(), true)
 	return nil
 }
 
 // if AdjustTime doesn't receive a parameter, it behaves exactly
 // like ServerTime(), otherwise adjusts given timestamp
 func (t *TimeServer) AdjustTime(args *Args, reply *int64) error {
+	fixdrift := false
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
+		fixdrift = true
 	}
-	*reply = fetchTime(inTime)
+	*reply = fetchTime(inTime, fixdrift)
 	return nil
 }
 
 // given a timestamp, it returns the difference between the adjusted timestamp and Earth-UTC
+// never fix drift when a timestamp is provided
 func (t *TimeServer) CalcRelativeTime(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
 	}
 	t0 := (inTime + epochDiff)
@@ -186,7 +234,7 @@ func (t *TimeServer) CalcRelativeTime(args *Args, reply *int64) error {
 // when used on Earth, adjusts a given timestamp to show local time on other body (e.g. moon)
 func (t *TimeServer) AddRelativeTime(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
 	}
 	t0 := (inTime + epochDiff)
@@ -199,7 +247,7 @@ func (t *TimeServer) AddRelativeTime(args *Args, reply *int64) error {
 // timestamp defaults to current time on server
 func (t *TimeServer) RelativeUnix(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
 	}
 	e := inTime / norm
@@ -210,7 +258,7 @@ func (t *TimeServer) RelativeUnix(args *Args, reply *int64) error {
 // returns given timestamp adjusted since TZ epoch (UTC @ 1900-01-01 00:00:00)
 func (t *TimeServer) AdjustUTCTZ(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
 	}
 	inTime = tznano + inTime
@@ -222,7 +270,7 @@ func (t *TimeServer) AdjustUTCTZ(args *Args, reply *int64) error {
 // returns amount of adjustment on given timestamp since TZ epoch (UTC @ 1900-01-01 00:00:00)
 func (t *TimeServer) RelativeUTCTZ(args *Args, reply *int64) error {
 	inTime, err := strconv.ParseInt(args.Moment, 10, 64)
-	if err != nil {
+	if err != nil || inTime == 0 {
 		inTime = time.Now().UnixNano()
 	}
 	inTime = tznano + inTime
